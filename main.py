@@ -20,7 +20,7 @@ def main():
             printer.print("\n[WELCOME] ")
             tensorboard_writer = printer.get_tensorboard_writer()
 
-            # initialize federated learningå
+            # initialize federated learning
             central_server = Server(tensorboard_writer)
             central_server.setup()
 
@@ -39,10 +39,9 @@ def main():
         printer.print(accuracy)
         printer.print(uploads)
 
-    now_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     if config.SAVE:
         df = pandas.DataFrame(res)
-        df.to_csv('/content/drive/MyDrive/FGT-0606/{}_{}_{}_time={}.csv'.format(config.DATASET_NAME, config.RUN_TYPE, config.CALIBRATION_TYPE, now_time), index=False)
+        df.to_csv('./{}_{}_{}.csv'.format(config.DATASET_NAME, config.RUN_TYPE, config.CALIBRATION_TYPE), index=False)
         printer.print('...saved successfully')
     # bye!
     printer.print("...done all learning process!\n...exit program!")

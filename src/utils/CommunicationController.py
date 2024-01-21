@@ -401,6 +401,7 @@ class CommunicationController:
         sampled_client_indices = sorted(
             np.random.choice(a=client_indices, size=num_sampled_clients, replace=False, p=p).tolist())
 
+        sampled_client_indices.pop(0)
         self.sampled_clients_indices = sampled_client_indices
         message = f"{sampled_client_indices} clients are selected for the next update with possibility {self.weight[sampled_client_indices]}."
 

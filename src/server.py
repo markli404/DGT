@@ -15,13 +15,16 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
-# custom packages
+
+
+''' custom packages '''
 from .models import *
 from .client import Client
 from .utils.DriftController import *
 from .utils.CommunicationController import *
 from .utils.DatasetController import *
 from .utils.Printer import *
+from .utils.GradientVisualizer import *
 
 logger = logging.getLogger(__name__)
 
@@ -88,15 +91,23 @@ class Server(object):
         # initialize CommunicationController
         self.CommunicationController = CommunicationController(self.clients)
 
+        # initialize GradientVisualizer
+        self.GradientVisualizer = GradientVisualizer()
+
         # send the model skeleton to all clients
         message = self.CommunicationController.transmit_model(self.model, to_all_clients=True)
-
         self.log(message)
+
+        # send the train, test set to all clients
+        for client in self.clients:
+            new_train_set, new_test_set = self.DatasetController.get_dataset_for_client(client)
+
+            client.update_train(new_train_set, replace=True)
+            client.update_test(new_test_set, replace=True)
 
     def create_clients(self, distribution=None):
         clients = []
         distribution = np.zeros((self.num_clients, config.NUM_CLASS))
-        # np.random.seed(config.NUM_SELECTED_CLASS)
         client_idx = np.arange(self.num_clients)
         np.random.shuffle(client_idx)
         for i in client_idx:
@@ -111,9 +122,11 @@ class Server(object):
             for j in selected_class:
                 distribution[i][j] = 1
 
+        # make the first client as the optimal client
+        distribution[0] = np.ones(config.NUM_CLASS) / config.NUM_CLASS
+
         distribution = distribution / config.NUM_SELECTED_CLASS
-        for i in range(self.num_clients):
-            d = distribution[i]
+        for i in client_idx:
             client = Client(client_id=i, device=self.device, distribution=distribution[i])
             clients.append(client)
 
@@ -140,6 +153,20 @@ class Server(object):
 
         new_model.load_state_dict(averaged_weights)
         return new_model
+
+    def visualize_gradients(self):
+        self.GradientVisualizer.add(self.clients[0].global_current.flatten_model(), 'k', 'Global')
+        for client in self.clients:
+            if client.id == 0:
+                self.GradientVisualizer.add(client.client_current.flatten_model(), 'r', 'Optimal Client')
+            else:
+                self.GradientVisualizer.add(client.client_current.flatten_model(), 'b', 'Client')
+
+        self.GradientVisualizer.add(self.model.flatten_model(), 'g', 'Global Current')
+
+        self.GradientVisualizer.plot(self._round)
+        self.GradientVisualizer.reset()
+
 
     def fedavg_aggregation(self, sampled_client_indices, coeff, eps=0.001):
         # get gradient (delta) of selected clients
@@ -1297,21 +1324,23 @@ class Server(object):
         self.model = update_method(sampled_client_indices, coeff)
 
     def train_without_drift(self, sample_method, coeff_method, update_method, update_type=config.RUN_TYPE):
-        # assign new training and test set based on distribution
-        self.DriftController.enforce_drift(self.clients, None)
         # train all clients model with local dataset
         message = self.CommunicationController.update_selected_clients(update_type, all_client=True)
         self.log(message)
 
+        # select clients based on our sample_method
         message, sampled_client_indices = sample_method()
-
         self.log(message)
+
         # evaluate selected clients with local dataset
         # message = self.CommunicationController.evaluate_all_models()
         # self.log(message)
 
         # update model parameters of the selected clients and update the global model
         self.update_model(sampled_client_indices, coeff_method, update_method)
+
+        # visualize gradients of current round
+        self.visualize_gradients()
 
         # send global model to the selected clients
         message = self.CommunicationController.transmit_model(self.model)
@@ -1500,7 +1529,7 @@ class Server(object):
                     self.get_uniformed_coeff,
                     self.aggregate_models, update_type='fedavg', drift_type='None')
             elif config.RUN_TYPE == 'fedavg':
-                self.train_with_drift_after_converge(
+                self.train_without_drift(
                     self.CommunicationController.sample_clients,
                     self.get_uniformed_coeff,
                     self.aggregate_models)

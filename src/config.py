@@ -7,7 +7,7 @@ class config:
     DRITF_PERCENTAGE = None
     CLASS_SWAP = True
     RUN_TYPE = "fedavg" #"case_study"
-    CALIBRATION_TYPE = 'pairwise_vaccine'
+    CALIBRATION_TYPE = None
     # layerwise_vaccine
     # pairwise_vaccine
     # pairwise_vertical_conflicts_avg_cossim1
@@ -27,8 +27,8 @@ class config:
     GRADIENT = False
     NUM_CLIENTS = 20
     NUM_ROUNDS = 300
-    NUM_TRAINING_SAMPLES = 256                    # number of samples added to local training set
-    NUM_TEST_SAMPLES = 128                          # number of samples in the test set
+    NUM_TRAINING_SAMPLES = 2100                    # number of samples added to local training set
+    NUM_TEST_SAMPLES = 425                          # number of samples in the test set
     DRIFT = [600]                                     # when drift happens
     PERCENTAGE = 1
     FRACTION = None                                 # percentage of clients selected each round
@@ -40,9 +40,6 @@ class config:
     fractions = [1] # [2, 1.7, 1.1]  # 其他的 [0.2, 0.4, 0.6, 0.8, 1]               # fast的频率控制[1.1, 0.8, 0.2, -0.5, -1]
     CACHE = False
     FRESHNESS = False
-
-    # fractions = [0.1, 0.3, 0.5, 0.7, 0.9, 1.1, 1.3]
-    # fractions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
     SAVE = True
 
